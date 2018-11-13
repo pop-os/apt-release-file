@@ -71,7 +71,24 @@ impl FromStr for DistRelease {
         }
 
         fn get_time(value: &str) -> io::Result<DateTime<Utc>> {
-            let value = value.trim();
+            let fields = value.split_whitespace().collect::<Vec<&str>>();
+            if fields.len() != 6 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("timezone is invalid: should have been six fields: {}", value)
+                ));
+            }
+
+            let mut buffer: String;
+            let value = if fields[5] == "UTC" {
+                buffer = fields[..5].join(" ");
+                buffer.push(' ');
+                buffer.push_str("+0000");
+                &buffer
+            } else {
+                value
+            };
+
             DateTime::parse_from_rfc2822(value)
                 .map(|tz| tz.with_timezone(&Utc))
                 .map_err(|why| io::Error::new(
