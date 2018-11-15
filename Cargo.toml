@@ -1,5 +1,5 @@
 [package]
-name = "apt-release-file"
+name = "deb-release-file"
 version = "0.1.0"
 authors = ["Michael Aaron Murphy <mmstickman@gmail.com>"]
 description = "Library for serializing / deserializing apt dist release files"
@@ -9,4 +9,5 @@ readme = "README.md"
 [dependencies]
 cascade = "0.1.2"
 chrono = "0.4.6"
+deb-architectures = { git = "https://github.com/pop-os/deb-architectures" }
 smart-default = "0.3.0"

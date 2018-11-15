@@ -1,8 +1,10 @@
 extern crate chrono;
+extern crate deb_architectures;
 #[macro_use]
 extern crate smart_default;
 
 use chrono::{DateTime, Utc};
+use deb_architectures::Architecture;
 use std::collections::BTreeMap;
 use std::{io, fs};
 use std::path::Path;
@@ -176,36 +178,6 @@ impl FromStr for DistRelease {
 
 #[derive(Debug, Default, Clone, Hash, PartialEq)]
 pub struct ReleaseEntries(pub BTreeMap<String, Vec<ReleaseEntry>>);
-
-#[derive(Debug, Clone, Hash, PartialEq)]
-pub enum Architecture {
-    All,
-    Amd64,
-    Arm64,
-    Armhf,
-    I386,
-    Ppc64el,
-    S390x,
-}
-
-impl FromStr for Architecture {
-    type Err = &'static str;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let arch = match input {
-            "all" => Architecture::All,
-            "amd64" => Architecture::Amd64,
-            "arm64" => Architecture::Arm64,
-            "armhf" => Architecture::Armhf,
-            "i386" => Architecture::I386,
-            "ppc64el" => Architecture::Ppc64el,
-            "s390x" => Architecture::S390x,
-            _ => return Err("invalid architecture")
-        };
-
-        Ok(arch)
-    }
-}
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum ReleaseVariant {

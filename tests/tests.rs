@@ -1,6 +1,8 @@
-extern crate apt_release_file;
+extern crate deb_architectures;
+extern crate deb_release_file;
 
-use apt_release_file::{Architecture, ReleaseEntry, ReleaseVariant};
+use deb_architectures::Architecture;
+use deb_release_file::{ReleaseEntry, ReleaseVariant};
 
 #[test]
 fn release_entry_architectures() {
