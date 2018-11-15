@@ -21,7 +21,7 @@ pub struct DistRelease {
     pub origin: String,
     pub suite: String,
     pub version: String,
-    pub sums: BTreeMap<String, Vec<ReleaseEntry>>
+    pub sums: BTreeMap<String, ReleaseEntries>
 }
 
 impl DistRelease {
@@ -29,7 +29,6 @@ impl DistRelease {
         fs::read_to_string(path).and_then(|string| string.parse::<Self>())
     }
 }
-
 
 impl FromStr for DistRelease {
     type Err = io::Error;
@@ -135,12 +134,21 @@ impl FromStr for DistRelease {
         }
 
         let mut active_hash = String::new();
-        let mut active_entries = Vec::new();
+        let mut active_entries: BTreeMap<String, Vec<ReleaseEntry>> = BTreeMap::new();
 
         for line in iterator {
             if line.starts_with(' ') {
                 match line.parse::<ReleaseEntry>() {
-                    Ok(entry) => active_entries.push(entry),
+                    Ok(entry) => {
+                        let base = match entry.path.rfind('.') {
+                            Some(pos) => entry.path[..pos].to_owned(),
+                            None => entry.path.to_owned()
+                        };
+
+                        active_entries.entry(base)
+                            .and_modify(|e| e.push(entry.clone()))
+                            .or_insert_with(|| vec![entry]);
+                    },
                     Err(why) => return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         format!("invalid checksum entry: {}", why)
@@ -148,7 +156,7 @@ impl FromStr for DistRelease {
                 }
             } else {
                 if ! active_entries.is_empty() {
-                    release.sums.insert(active_hash.clone(), active_entries.clone());
+                    release.sums.insert(active_hash.clone(), ReleaseEntries(active_entries.clone()));
                     active_entries.clear();
                 }
 
@@ -159,11 +167,51 @@ impl FromStr for DistRelease {
         }
 
         if ! active_entries.is_empty() {
-            release.sums.insert(active_hash, active_entries);
+            release.sums.insert(active_hash, ReleaseEntries(active_entries));
         }
 
         Ok(release)
     }
+}
+
+#[derive(Debug, Default, Clone, Hash, PartialEq)]
+pub struct ReleaseEntries(pub BTreeMap<String, Vec<ReleaseEntry>>);
+
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub enum Architecture {
+    All,
+    Amd64,
+    Arm64,
+    Armhf,
+    I386,
+    Ppc64el,
+    S390x,
+}
+
+impl FromStr for Architecture {
+    type Err = &'static str;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let arch = match input {
+            "all" => Architecture::All,
+            "amd64" => Architecture::Amd64,
+            "arm64" => Architecture::Arm64,
+            "armhf" => Architecture::Armhf,
+            "i386" => Architecture::I386,
+            "ppc64el" => Architecture::Ppc64el,
+            "s390x" => Architecture::S390x,
+            _ => return Err("invalid architecture")
+        };
+
+        Ok(arch)
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq)]
+pub enum ReleaseVariant {
+    Binary(Architecture),
+    Contents(Architecture),
+    Translation(String),
 }
 
 /// The hash, size, and path of a file that this release file points to.
@@ -171,7 +219,68 @@ impl FromStr for DistRelease {
 pub struct ReleaseEntry {
     pub sum: String,
     pub size: u64,
-    pub path: String
+    pub path: String,
+}
+
+impl ReleaseEntry {
+    pub fn variant(&self) -> Option<ReleaseVariant> {
+        let mut components = self.path.split('/');
+        let mut variant = None;
+        let mut first = true;
+
+        while let Some(component) = components.next() {
+            if component == "source" {
+                break
+            }
+
+            if component == "i18n" {
+                while let Some(component) = components.next() {
+                    if let Some(lang) = component.split('-').nth(1) {
+                        let lang = match lang.rfind('.') {
+                            Some(pos) => &lang[..pos],
+                            None => lang
+                        };
+
+                        variant = Some(ReleaseVariant::Translation(lang.to_owned()));
+                        break
+                    }
+                }
+
+                break
+            }
+
+            if first {
+                first = false;
+                if component.starts_with("Contents") {
+                    if let Some(arch) = component.split('-').nth(1) {
+                        let arch = match arch.rfind('.') {
+                            Some(pos) => &arch[..pos],
+                            None => arch
+                        };
+
+                        if let Ok(arch) = arch.parse::<Architecture>() {
+                            variant = Some(ReleaseVariant::Contents(arch));
+                            break
+                        }
+                    }
+                }
+            }
+
+            if let Some(arch) = component.split('-').nth(1) {
+                let arch = match arch.rfind('.') {
+                    Some(pos) => &arch[..pos],
+                    None => arch
+                };
+
+                if let Ok(arch) = arch.parse::<Architecture>() {
+                    variant = Some(ReleaseVariant::Binary(arch));
+                    break
+                }
+            }
+        }
+
+        variant
+    }
 }
 
 impl FromStr for ReleaseEntry {
@@ -180,13 +289,15 @@ impl FromStr for ReleaseEntry {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut iterator = input.split_whitespace();
 
-        Ok(Self {
+        let output = Self {
             sum: iterator.next().ok_or("missing sum field")?.to_owned(),
             size: iterator.next()
                 .ok_or("missing size field")?
                 .parse::<u64>()
                 .map_err(|_| "size field is not a number")?,
-            path: iterator.next().ok_or("missing path field")?.to_owned()
-        })
+            path: iterator.next().ok_or("missing path field")?.to_owned(),
+        };
+
+        Ok(output)
     }
 }
