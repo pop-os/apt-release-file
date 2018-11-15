@@ -183,6 +183,7 @@ pub struct ReleaseEntries(pub BTreeMap<String, Vec<ReleaseEntry>>);
 pub enum ReleaseVariant {
     Binary(Architecture),
     Contents(Architecture),
+    Components(Architecture),
     Translation(String),
 }
 
@@ -198,7 +199,6 @@ impl ReleaseEntry {
     pub fn variant(&self) -> Option<ReleaseVariant> {
         let mut components = self.path.split('/');
         let mut variant = None;
-        let mut first = true;
 
         while let Some(component) = components.next() {
             if component == "source" {
@@ -208,7 +208,7 @@ impl ReleaseEntry {
             if component == "i18n" {
                 while let Some(component) = components.next() {
                     if let Some(lang) = component.split('-').nth(1) {
-                        let lang = match lang.rfind('.') {
+                        let lang = match lang.find('.') {
                             Some(pos) => &lang[..pos],
                             None => lang
                         };
@@ -221,34 +221,30 @@ impl ReleaseEntry {
                 break
             }
 
-            if first {
-                first = false;
-                if component.starts_with("Contents") {
-                    if let Some(arch) = component.split('-').nth(1) {
-                        let arch = match arch.rfind('.') {
-                            Some(pos) => &arch[..pos],
-                            None => arch
-                        };
+            macro_rules! fetch_arch {
+                ($kind:tt) => {
+                    fetch_arch!($kind => $kind);
+                };
+                ($kind:tt => $variant:tt) => {
+                    if component.starts_with(stringify!($kind)) {
+                        if let Some(arch) = component.split('-').nth(1) {
+                            let arch = match arch.find('.') {
+                                Some(pos) => &arch[..pos],
+                                None => arch
+                            };
 
-                        if let Ok(arch) = arch.parse::<Architecture>() {
-                            variant = Some(ReleaseVariant::Contents(arch));
-                            break
+                            if let Ok(arch) = arch.parse::<Architecture>() {
+                                variant = Some(ReleaseVariant::$variant(arch));
+                                break
+                            }
                         }
                     }
                 }
             }
 
-            if let Some(arch) = component.split('-').nth(1) {
-                let arch = match arch.rfind('.') {
-                    Some(pos) => &arch[..pos],
-                    None => arch
-                };
-
-                if let Ok(arch) = arch.parse::<Architecture>() {
-                    variant = Some(ReleaseVariant::Binary(arch));
-                    break
-                }
-            }
+            fetch_arch!(binary => Binary);
+            fetch_arch!(Contents);
+            fetch_arch!(Components);
         }
 
         variant

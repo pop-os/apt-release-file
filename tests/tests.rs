@@ -122,6 +122,27 @@ fn release_entry_contents() {
 }
 
 #[test]
+fn release_entry_components() {
+    assert_eq!(
+        " b6c48cec06853d707de0f23c3d8c989d            20004 main/dep11/Components-ppc64el.yml.xz"
+            .parse::<ReleaseEntry>()
+            .map(|r| {
+                let variant = r.variant();
+                (r, variant)
+            })
+            .unwrap(),
+        (
+            ReleaseEntry {
+                sum: "b6c48cec06853d707de0f23c3d8c989d".into(),
+                size: 20004,
+                path: "main/dep11/Components-ppc64el.yml.xz".into(),
+            },
+            Some(ReleaseVariant::Components(Architecture::Ppc64el))
+        )
+    );
+}
+
+#[test]
 fn release_entry_other() {
     assert_eq!(
         " b6c48cec06853d707de0f23c3d8c989d            20004 main/source/Sources.xz"
