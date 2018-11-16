@@ -184,6 +184,7 @@ pub enum ReleaseVariant {
     Binary(Architecture),
     Contents(Architecture),
     Components(Architecture),
+    Source,
     Translation(String),
 }
 
@@ -198,14 +199,11 @@ pub struct ReleaseEntry {
 impl ReleaseEntry {
     pub fn variant(&self) -> Option<ReleaseVariant> {
         let mut components = self.path.split('/');
-        let mut variant = None;
 
         while let Some(component) = components.next() {
             if component == "source" {
-                break
-            }
-
-            if component == "i18n" {
+                return Some(ReleaseVariant::Source);
+            } else if component == "i18n" {
                 while let Some(component) = components.next() {
                     if let Some(lang) = component.split('-').nth(1) {
                         let lang = match lang.find('.') {
@@ -213,8 +211,7 @@ impl ReleaseEntry {
                             None => lang
                         };
 
-                        variant = Some(ReleaseVariant::Translation(lang.to_owned()));
-                        break
+                        return Some(ReleaseVariant::Translation(lang.to_owned()));
                     }
                 }
 
@@ -234,8 +231,7 @@ impl ReleaseEntry {
                             };
 
                             if let Ok(arch) = arch.parse::<Architecture>() {
-                                variant = Some(ReleaseVariant::$variant(arch));
-                                break
+                                return Some(ReleaseVariant::$variant(arch));
                             }
                         }
                     }
@@ -247,7 +243,7 @@ impl ReleaseEntry {
             fetch_arch!(Components);
         }
 
-        variant
+        None
     }
 }
 
