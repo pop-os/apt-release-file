@@ -10,4 +10,4 @@ readme = "README.md"
 cascade = "0.1.2"
 chrono = "0.4.6"
 deb-architectures = { git = "https://github.com/pop-os/deb-architectures" }
-smart-default = "0.3.0"
+smart-default = "0.2.0"
