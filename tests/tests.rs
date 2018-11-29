@@ -158,7 +158,7 @@ fn release_entry_other() {
                 size: 20004,
                 path: "main/source/Sources.xz".into(),
             },
-            None
+            Some(ReleaseVariant::Source)
         )
     );
 }
