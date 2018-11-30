@@ -6,9 +6,9 @@ extern crate smart_default;
 use chrono::{DateTime, Utc};
 use deb_architectures::Architecture;
 use std::collections::BTreeMap;
-use std::{io, fs};
 use std::path::Path;
 use std::str::FromStr;
+use std::{fs, io};
 
 /// The dist release file is a file in the apt repository that points to all other dist files in the archive.
 #[derive(Debug, SmartDefault, Clone, PartialEq)]
@@ -23,7 +23,7 @@ pub struct DistRelease {
     pub origin: String,
     pub suite: String,
     pub version: String,
-    pub sums: BTreeMap<String, ReleaseEntries>
+    pub sums: BTreeMap<String, ReleaseEntries>,
 }
 
 impl DistRelease {
@@ -75,7 +75,7 @@ impl FromStr for DistRelease {
             value.split_whitespace().map(String::from).collect()
         }
 
-        while ! entries.is_empty() {
+        while !entries.is_empty() {
             let line = iterator.next().unwrap();
 
             for (id, &(ref key, variant)) in entries.iter().enumerate() {
@@ -93,7 +93,7 @@ impl FromStr for DistRelease {
                         Variant::Label => release.label = get_string(value),
                         Variant::Origin => release.origin = get_string(value),
                         Variant::Suite => release.suite = get_string(value),
-                        Variant::Version => release.version = get_string(value)
+                        Variant::Version => release.version = get_string(value),
                     }
                 }
             }
@@ -103,7 +103,7 @@ impl FromStr for DistRelease {
             } else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    format!("unknown key in release file: {}", line)
+                    format!("unknown key in release file: {}", line),
                 ));
             }
         }
@@ -117,21 +117,26 @@ impl FromStr for DistRelease {
                     Ok(entry) => {
                         let base = match entry.path.rfind('.') {
                             Some(pos) => entry.path[..pos].to_owned(),
-                            None => entry.path.to_owned()
+                            None => entry.path.to_owned(),
                         };
 
-                        active_entries.entry(base)
+                        active_entries
+                            .entry(base)
                             .and_modify(|e| e.push(entry.clone()))
                             .or_insert_with(|| vec![entry]);
-                    },
-                    Err(why) => return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        format!("invalid checksum entry: {}", why)
-                    ))
+                    }
+                    Err(why) => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("invalid checksum entry: {}", why),
+                        ))
+                    }
                 }
             } else {
-                if ! active_entries.is_empty() {
-                    release.sums.insert(active_hash.clone(), ReleaseEntries(active_entries.clone()));
+                if !active_entries.is_empty() {
+                    release
+                        .sums
+                        .insert(active_hash.clone(), ReleaseEntries(active_entries.clone()));
                     active_entries.clear();
                 }
 
@@ -141,8 +146,10 @@ impl FromStr for DistRelease {
             }
         }
 
-        if ! active_entries.is_empty() {
-            release.sums.insert(active_hash, ReleaseEntries(active_entries));
+        if !active_entries.is_empty() {
+            release
+                .sums
+                .insert(active_hash, ReleaseEntries(active_entries));
         }
 
         Ok(release)
@@ -151,6 +158,21 @@ impl FromStr for DistRelease {
 
 #[derive(Debug, Default, Clone, Hash, PartialEq)]
 pub struct ReleaseEntries(pub BTreeMap<String, Vec<ReleaseEntry>>);
+
+impl ReleaseEntries {
+    pub fn filter_components<S: AsRef<str>>(
+        self,
+        components: Vec<S>,
+    ) -> impl Iterator<Item = (String, Vec<ReleaseEntry>)> {
+        self.0.into_iter()
+            // Filter entries to only consider components that are requested.
+            .filter(move |(item, _entries)| {
+                item.find('/')
+                    .map(|pos| &item[..pos])
+                    .map_or(true, |comp| components.iter().any(|c| c.as_ref() == comp))
+            })
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum ReleaseVariant {
@@ -181,14 +203,14 @@ impl ReleaseEntry {
                     if let Some(lang) = component.split('-').nth(1) {
                         let lang = match lang.find('.') {
                             Some(pos) => &lang[..pos],
-                            None => lang
+                            None => lang,
                         };
 
                         return Some(ReleaseVariant::Translation(lang.to_owned()));
                     }
                 }
 
-                break
+                break;
             }
 
             macro_rules! fetch_arch {
@@ -200,7 +222,7 @@ impl ReleaseEntry {
                         if let Some(arch) = component.split('-').nth(1) {
                             let arch = match arch.find('.') {
                                 Some(pos) => &arch[..pos],
-                                None => arch
+                                None => arch,
                             };
 
                             if let Ok(arch) = arch.parse::<Architecture>() {
@@ -208,7 +230,7 @@ impl ReleaseEntry {
                             }
                         }
                     }
-                }
+                };
             }
 
             fetch_arch!(binary => Binary);
@@ -228,7 +250,8 @@ impl FromStr for ReleaseEntry {
 
         let output = Self {
             sum: iterator.next().ok_or("missing sum field")?.to_owned(),
-            size: iterator.next()
+            size: iterator
+                .next()
                 .ok_or("missing size field")?
                 .parse::<u64>()
                 .map_err(|_| "size field is not a number")?,
@@ -239,13 +262,15 @@ impl FromStr for ReleaseEntry {
     }
 }
 
-
 fn get_time(value: &str) -> io::Result<DateTime<Utc>> {
     let fields = value.split_whitespace().collect::<Vec<&str>>();
     if fields.len() != 6 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("timezone is invalid: should have been six fields: {}", value)
+            format!(
+                "timezone is invalid: should have been six fields: {}",
+                value
+            ),
         ));
     }
 
@@ -267,10 +292,12 @@ fn get_time(value: &str) -> io::Result<DateTime<Utc>> {
 
     DateTime::parse_from_rfc2822(&buffer)
         .map(|tz| tz.with_timezone(&Utc))
-        .map_err(|why| io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!("unable to parse date ({}) in release file: {}", buffer, why)
-        ))
+        .map_err(|why| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unable to parse date ({}) in release file: {}", buffer, why),
+            )
+        })
 }
 
 #[cfg(test)]
