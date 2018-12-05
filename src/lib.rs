@@ -23,7 +23,7 @@ pub struct DistRelease {
     pub origin: String,
     pub suite: String,
     pub version: String,
-    pub sums: BTreeMap<String, ReleaseEntries>,
+    pub sums: BTreeMap<String, EntryComponents>,
 }
 
 impl DistRelease {
@@ -109,21 +109,40 @@ impl FromStr for DistRelease {
         }
 
         let mut active_hash = String::new();
-        let mut active_entries: BTreeMap<String, Vec<ReleaseEntry>> = BTreeMap::new();
+        let mut active_components = EntryComponents::default();
 
         for line in iterator {
             if line.starts_with(' ') {
                 match line.parse::<ReleaseEntry>() {
                     Ok(entry) => {
                         let base = match entry.path.rfind('.') {
-                            Some(pos) => entry.path[..pos].to_owned(),
-                            None => entry.path.to_owned(),
+                            Some(pos) => &entry.path[..pos],
+                            None => &entry.path,
                         };
 
-                        active_entries
-                            .entry(base)
-                            .and_modify(|e| e.push(entry.clone()))
-                            .or_insert_with(|| vec![entry]);
+                        match entry.path.find('/') {
+                            Some(pos) => {
+                                let component = &entry.path[..pos];
+                                active_components.components
+                                    .entry(component.into())
+                                    .and_modify(|e| {
+                                        e.entry(base.into())
+                                            .and_modify(|e| e.push(entry.to_owned()))
+                                            .or_insert_with(|| vec![entry.to_owned()]);
+                                    })
+                                    .or_insert_with(|| {
+                                        let mut map = BTreeMap::new();
+                                        map.insert(base.into(), vec![entry.to_owned()]);
+                                        map
+                                    });
+                            }
+                            None => {
+                                active_components.base
+                                    .entry(base.into())
+                                    .and_modify(|e| e.push(entry.to_owned()))
+                                    .or_insert_with(|| vec![entry.to_owned()]);
+                            }
+                        }
                     }
                     Err(why) => {
                         return Err(io::Error::new(
@@ -133,11 +152,11 @@ impl FromStr for DistRelease {
                     }
                 }
             } else {
-                if !active_entries.is_empty() {
+                if !active_components.is_empty() {
                     release
                         .sums
-                        .insert(active_hash.clone(), ReleaseEntries(active_entries.clone()));
-                    active_entries.clear();
+                        .insert(active_hash.clone(), active_components.clone());
+                    active_components.clear();
                 }
 
                 active_hash.clear();
@@ -146,31 +165,31 @@ impl FromStr for DistRelease {
             }
         }
 
-        if !active_entries.is_empty() {
+        if !active_components.is_empty() {
             release
                 .sums
-                .insert(active_hash, ReleaseEntries(active_entries));
+                .insert(active_hash, active_components);
         }
 
         Ok(release)
     }
 }
 
+/// Stores the entries for each component for this checksum method.
 #[derive(Debug, Default, Clone, Hash, PartialEq)]
-pub struct ReleaseEntries(pub BTreeMap<String, Vec<ReleaseEntry>>);
+pub struct EntryComponents {
+    pub base: BTreeMap<String, Vec<ReleaseEntry>>,
+    pub components: BTreeMap<String, BTreeMap<String, Vec<ReleaseEntry>>>,
+}
 
-impl ReleaseEntries {
-    pub fn filter_components<S: AsRef<str>>(
-        self,
-        components: Vec<S>,
-    ) -> impl Iterator<Item = (String, Vec<ReleaseEntry>)> {
-        self.0.into_iter()
-            // Filter entries to only consider components that are requested.
-            .filter(move |(item, _entries)| {
-                item.find('/')
-                    .map(|pos| &item[..pos])
-                    .map_or(true, |comp| components.iter().any(|c| c.as_ref() == comp))
-            })
+impl EntryComponents {
+    pub fn clear(&mut self) {
+        self.base.clear();
+        self.components.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.base.is_empty() && self.components.is_empty()
     }
 }
 
@@ -303,6 +322,7 @@ fn get_time(value: &str) -> io::Result<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn debian_rfc2822_quirks() {
         let time = "Wed, 28 Nov 2018 3:16:40 UTC";

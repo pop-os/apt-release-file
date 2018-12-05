@@ -20,7 +20,7 @@ fn release_entry_architectures() {
                 size: 10783,
                 path: "main/binary-ppc64el/Packages.gz".into(),
             },
-            Some(ReleaseVariant::Binary(Architecture::Ppc64el))
+            Some(ReleaseVariant::Binary(Architecture::Ppc64El))
         )
     );
 
@@ -137,7 +137,7 @@ fn release_entry_components() {
                 size: 20004,
                 path: "main/dep11/Components-ppc64el.yml.xz".into(),
             },
-            Some(ReleaseVariant::Components(Architecture::Ppc64el))
+            Some(ReleaseVariant::Components(Architecture::Ppc64El))
         )
     );
 }
