@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+/// The size of an icon package. IE: `48x48@2`
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub struct ImageSize {
     pub pixels: u16,
