@@ -1,11 +1,11 @@
 extern crate apt_release_file;
 extern crate deb_architectures;
 
-use apt_release_file::{BinaryEntry, Dep11Entry, ReleaseEntry, EntryVariant, SourceEntry, I18nEntry};
+use apt_release_file::{BinaryEntry, Dep11Entry, ImageSize, ReleaseEntry, EntryVariant, SourceEntry, I18nEntry};
 use deb_architectures::Architecture;
 
 #[test]
-fn release_entry_architectures() {
+fn release_entry_binaries() {
     assert_eq!(
         " e58165aee561d376f164717ebe7b89bb            10783 main/binary-ppc64el/Packages.gz"
             .parse::<ReleaseEntry>()
@@ -122,7 +122,7 @@ fn release_entry_contents() {
 }
 
 #[test]
-fn release_entry_components() {
+fn release_entry_dep11_components() {
     assert_eq!(
         " b6c48cec06853d707de0f23c3d8c989d            20004 main/dep11/Components-ppc64el.yml.xz"
             .parse::<ReleaseEntry>()
@@ -139,6 +139,37 @@ fn release_entry_components() {
             },
             Some(EntryVariant::Dep11(Dep11Entry::Components(Architecture::Ppc64El, Some("yml.xz".into()))))
         )
+    );
+}
+
+#[test]
+fn release_entry_dep11_icons() {
+    assert_eq!(
+        " 31f6566d35ccd604be46ed5b1f813cdf               29 main/dep11/icons-64x64@2.tar.gz"
+            .parse::<ReleaseEntry>()
+            .map(|r| r.variant())
+            .unwrap(),
+        Some(EntryVariant::Dep11(Dep11Entry::Icons(
+            ImageSize {
+                pixels: 64,
+                hidpi: 2
+            },
+            Some("tar.gz".into())
+        )))
+    );
+
+    assert_eq!(
+        " 4a385adab5c0e3f537d4cd32476883a2           173056 main/dep11/icons-48x48.tar"
+            .parse::<ReleaseEntry>()
+            .map(|r| r.variant())
+            .unwrap(),
+        Some(EntryVariant::Dep11(Dep11Entry::Icons(
+            ImageSize {
+                pixels: 48,
+                hidpi: 0
+            },
+            Some("tar".into())
+        )))
     );
 }
 

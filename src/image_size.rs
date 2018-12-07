@@ -18,8 +18,9 @@ impl FromStr for ImageSize {
                 let y = &input[pos+1..];
                 match y.find('@') {
                     Some(pos) => {
-                        let y = &y[..pos];
                         let z = &y[pos+1..];
+                        let y = &y[..pos];
+
                         match (x.parse::<u16>(), y.parse::<u16>(), z.parse::<u16>()) {
                             (Ok(pixels), Ok(y), Ok(hidpi)) => if pixels == y {
                                 Ok(ImageSize { pixels, hidpi })
