@@ -1,7 +1,9 @@
 extern crate apt_release_file;
 extern crate deb_architectures;
 
-use apt_release_file::{BinaryEntry, Dep11Entry, ImageSize, ReleaseEntry, EntryVariant, SourceEntry, I18nEntry};
+use apt_release_file::{
+    BinaryEntry, Dep11Entry, EntryVariant, I18nEntry, ImageSize, ReleaseEntry, SourceEntry,
+};
 use deb_architectures::Architecture;
 
 #[test]
@@ -20,7 +22,10 @@ fn release_entry_binaries() {
                 size: 10783,
                 path: "main/binary-ppc64el/Packages.gz".into(),
             },
-            Some(EntryVariant::Binary(BinaryEntry::Packages(Some("gz".into())), Architecture::Ppc64El))
+            Some(EntryVariant::Binary(
+                BinaryEntry::Packages(Some("gz".into())),
+                Architecture::Ppc64El
+            ))
         )
     );
 
@@ -38,7 +43,10 @@ fn release_entry_binaries() {
                 size: 14184,
                 path: "main/binary-arm64/Packages.xz".into(),
             },
-            Some(EntryVariant::Binary(BinaryEntry::Packages(Some("xz".into())), Architecture::Arm64))
+            Some(EntryVariant::Binary(
+                BinaryEntry::Packages(Some("xz".into())),
+                Architecture::Arm64
+            ))
         )
     );
 }
@@ -98,7 +106,10 @@ fn release_entry_contents() {
                 size: 39115618,
                 path: "Contents-arm64.gz".into(),
             },
-            Some(EntryVariant::Contents(Architecture::Arm64, Some("gz".into())))
+            Some(EntryVariant::Contents(
+                Architecture::Arm64,
+                Some("gz".into())
+            ))
         )
     );
 
@@ -137,7 +148,10 @@ fn release_entry_dep11_components() {
                 size: 20004,
                 path: "main/dep11/Components-ppc64el.yml.xz".into(),
             },
-            Some(EntryVariant::Dep11(Dep11Entry::Components(Architecture::Ppc64El, Some("yml.xz".into()))))
+            Some(EntryVariant::Dep11(Dep11Entry::Components(
+                Architecture::Ppc64El,
+                Some("yml.xz".into())
+            )))
         )
     );
 }
@@ -189,7 +203,9 @@ fn release_entry_other() {
                 size: 20004,
                 path: "main/source/Sources.xz".into(),
             },
-            Some(EntryVariant::Source(SourceEntry::Sources(Some("xz".into()))))
+            Some(EntryVariant::Source(SourceEntry::Sources(Some(
+                "xz".into()
+            ))))
         )
     );
 }

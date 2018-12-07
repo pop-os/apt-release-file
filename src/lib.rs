@@ -10,8 +10,8 @@ mod time;
 pub use self::entry::*;
 pub use self::image_size::*;
 
-use chrono::{DateTime, Utc};
 use self::time::get_time;
+use chrono::{DateTime, Utc};
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::str::FromStr;
@@ -133,9 +133,10 @@ impl FromStr for DistRelease {
                             Some(pos) => {
                                 let component = &path[..pos];
                                 // TODO: Prevent this allocation.
-                                entry.path = path[pos+1..].to_owned();
+                                entry.path = path[pos + 1..].to_owned();
 
-                                active_components.components
+                                active_components
+                                    .components
                                     .entry(component.into())
                                     .and_modify(|e| {
                                         e.entry(base.into())
@@ -150,7 +151,8 @@ impl FromStr for DistRelease {
                             }
                             None => {
                                 entry.path = path.clone();
-                                active_components.base
+                                active_components
+                                    .base
                                     .entry(base.into())
                                     .and_modify(|e| e.push(entry.to_owned()))
                                     .or_insert_with(|| vec![entry.to_owned()]);
@@ -179,9 +181,7 @@ impl FromStr for DistRelease {
         }
 
         if !active_components.is_empty() {
-            release
-                .sums
-                .insert(active_hash, active_components);
+            release.sums.insert(active_hash, active_components);
         }
 
         Ok(release)

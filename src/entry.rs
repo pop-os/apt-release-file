@@ -1,6 +1,6 @@
+use super::ImageSize;
 use deb_architectures::Architecture;
 use std::str::FromStr;
-use super::ImageSize;
 
 /// The hash, size, and path of a file that this release file points to.
 #[derive(Debug, Default, Clone, Hash, PartialEq)]
@@ -27,7 +27,7 @@ impl ReleaseEntry {
 
                     return binary.find('/').and_then(|pos| {
                         binary[..pos].parse::<Architecture>().ok().and_then(|arch| {
-                            let filename = &binary[pos+1..];
+                            let filename = &binary[pos + 1..];
                             if filename.starts_with("Packages") {
                                 let ext = extension_from(filename, 8);
                                 Some(EntryVariant::Binary(BinaryEntry::Packages(ext), arch))
@@ -37,23 +37,24 @@ impl ReleaseEntry {
                                 None
                             }
                         })
-                    })
+                    });
                 }
                 "debian-installer" => {
-                    return None
+                    return None;
                     // TODO
-                },
+                }
                 "dep11" => {
                     let path = &path[6..];
                     return if path.starts_with("icons-") {
                         type_with_extension::<ImageSize>(&path[6..])
                             .map(|(res, ext)| EntryVariant::Dep11(Dep11Entry::Icons(res, ext)))
                     } else if path.starts_with("Components-") {
-                        type_with_extension::<Architecture>(&path[11..])
-                            .map(|(arch, ext)| EntryVariant::Dep11(Dep11Entry::Components(arch, ext)))
+                        type_with_extension::<Architecture>(&path[11..]).map(|(arch, ext)| {
+                            EntryVariant::Dep11(Dep11Entry::Components(arch, ext))
+                        })
                     } else {
                         None
-                    }
+                    };
                 }
                 "i18n" => {
                     let path = &path[5..];
@@ -64,7 +65,7 @@ impl ReleaseEntry {
                         Some(EntryVariant::I18n(I18nEntry::Index))
                     } else {
                         None
-                    }
+                    };
                 }
                 "source" => {
                     let path = &path[7..];
@@ -75,13 +76,13 @@ impl ReleaseEntry {
                         Some(EntryVariant::Source(SourceEntry::Release))
                     } else {
                         None
-                    }
+                    };
                 }
-                _ => path = &path[pos+1..],
+                _ => path = &path[pos + 1..],
             }
         }
 
-        if ! found && self.path.starts_with("Contents-") {
+        if !found && self.path.starts_with("Contents-") {
             return type_with_extension::<Architecture>(&self.path[9..])
                 .map(|(arch, ext)| EntryVariant::Contents(arch, ext));
         }
@@ -124,7 +125,7 @@ pub enum EntryVariant {
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum Dep11Entry {
     Components(Architecture, Option<String>),
-    Icons(ImageSize, Option<String>)
+    Icons(ImageSize, Option<String>),
 }
 
 /// I18n entries contain translations for a given locale.
@@ -138,30 +139,30 @@ pub enum I18nEntry {
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum BinaryEntry {
     Packages(Option<String>),
-    Release
+    Release,
 }
 
 /// Similar to binary entries, but for source packages.
 #[derive(Debug, Clone, Hash, PartialEq)]
 pub enum SourceEntry {
     Sources(Option<String>),
-    Release
+    Release,
 }
 
 // If the apt entry is not a base length, it has an extension.
 fn extension_from(input: &str, len: usize) -> Option<String> {
-    if input.len() < len + 1  {
+    if input.len() < len + 1 {
         None
     } else {
-        Some(input[len+1..].to_owned())
+        Some(input[len + 1..].to_owned())
     }
 }
 
 // Apt entries tend to name a variant with a possible extension (compression).
 fn type_with_extension<T: FromStr>(input: &str) -> Option<(T, Option<String>)> {
     let (kind, ext) = match input.find('.') {
-        Some(pos) => (&input[..pos], Some(input[pos+1..].to_owned())),
-        None => (input, None)
+        Some(pos) => (&input[..pos], Some(input[pos + 1..].to_owned())),
+        None => (input, None),
     };
 
     kind.parse::<T>().ok().map(|kind| (kind, ext))
