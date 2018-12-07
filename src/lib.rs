@@ -3,8 +3,13 @@ extern crate deb_architectures;
 #[macro_use]
 extern crate smart_default;
 
+mod entry;
+mod image_size;
+
+pub use self::entry::*;
+pub use self::image_size::*;
+
 use chrono::{DateTime, Utc};
-use deb_architectures::Architecture;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::str::FromStr;
@@ -114,15 +119,20 @@ impl FromStr for DistRelease {
         for line in iterator {
             if line.starts_with(' ') {
                 match line.parse::<ReleaseEntry>() {
-                    Ok(entry) => {
-                        let base = match entry.path.rfind('.') {
-                            Some(pos) => &entry.path[..pos],
-                            None => &entry.path,
+                    Ok(mut entry) => {
+                        let mut path = String::new();
+                        ::std::mem::swap(&mut path, &mut entry.path);
+                        let base = match path.rfind('.') {
+                            Some(pos) => &path[..pos],
+                            None => &path,
                         };
 
-                        match entry.path.find('/') {
+                        match path.find('/') {
                             Some(pos) => {
-                                let component = &entry.path[..pos];
+                                let component = &path[..pos];
+                                // TODO: Prevent this allocation.
+                                entry.path = path[pos+1..].to_owned();
+
                                 active_components.components
                                     .entry(component.into())
                                     .and_modify(|e| {
@@ -137,6 +147,7 @@ impl FromStr for DistRelease {
                                     });
                             }
                             None => {
+                                entry.path = path.clone();
                                 active_components.base
                                     .entry(base.into())
                                     .and_modify(|e| e.push(entry.to_owned()))
@@ -190,94 +201,6 @@ impl EntryComponents {
 
     pub fn is_empty(&self) -> bool {
         self.base.is_empty() && self.components.is_empty()
-    }
-}
-
-#[derive(Debug, Clone, Hash, PartialEq)]
-pub enum ReleaseVariant {
-    Binary(Architecture),
-    Contents(Architecture),
-    Components(Architecture),
-    Source,
-    Translation(String),
-}
-
-/// The hash, size, and path of a file that this release file points to.
-#[derive(Debug, Default, Clone, Hash, PartialEq)]
-pub struct ReleaseEntry {
-    pub sum: String,
-    pub size: u64,
-    pub path: String,
-}
-
-impl ReleaseEntry {
-    pub fn variant(&self) -> Option<ReleaseVariant> {
-        let mut components = self.path.split('/');
-
-        while let Some(component) = components.next() {
-            if component == "source" {
-                return Some(ReleaseVariant::Source);
-            } else if component == "i18n" {
-                while let Some(component) = components.next() {
-                    if let Some(lang) = component.split('-').nth(1) {
-                        let lang = match lang.find('.') {
-                            Some(pos) => &lang[..pos],
-                            None => lang,
-                        };
-
-                        return Some(ReleaseVariant::Translation(lang.to_owned()));
-                    }
-                }
-
-                break;
-            }
-
-            macro_rules! fetch_arch {
-                ($kind:tt) => {
-                    fetch_arch!($kind => $kind);
-                };
-                ($kind:tt => $variant:tt) => {
-                    if component.starts_with(stringify!($kind)) {
-                        if let Some(arch) = component.split('-').nth(1) {
-                            let arch = match arch.find('.') {
-                                Some(pos) => &arch[..pos],
-                                None => arch,
-                            };
-
-                            if let Ok(arch) = arch.parse::<Architecture>() {
-                                return Some(ReleaseVariant::$variant(arch));
-                            }
-                        }
-                    }
-                };
-            }
-
-            fetch_arch!(binary => Binary);
-            fetch_arch!(Contents);
-            fetch_arch!(Components);
-        }
-
-        None
-    }
-}
-
-impl FromStr for ReleaseEntry {
-    type Err = &'static str;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let mut iterator = input.split_whitespace();
-
-        let output = Self {
-            sum: iterator.next().ok_or("missing sum field")?.to_owned(),
-            size: iterator
-                .next()
-                .ok_or("missing size field")?
-                .parse::<u64>()
-                .map_err(|_| "size field is not a number")?,
-            path: iterator.next().ok_or("missing path field")?.to_owned(),
-        };
-
-        Ok(output)
     }
 }
 

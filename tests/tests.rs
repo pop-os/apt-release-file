@@ -1,7 +1,7 @@
 extern crate apt_release_file;
 extern crate deb_architectures;
 
-use apt_release_file::{ReleaseEntry, ReleaseVariant};
+use apt_release_file::{Binary, Dep11, ReleaseEntry, ReleaseVariant, Source, I18n};
 use deb_architectures::Architecture;
 
 #[test]
@@ -20,7 +20,7 @@ fn release_entry_architectures() {
                 size: 10783,
                 path: "main/binary-ppc64el/Packages.gz".into(),
             },
-            Some(ReleaseVariant::Binary(Architecture::Ppc64El))
+            Some(ReleaseVariant::Binary(Binary::Packages(Some("gz".into())), Architecture::Ppc64El))
         )
     );
 
@@ -38,7 +38,7 @@ fn release_entry_architectures() {
                 size: 14184,
                 path: "main/binary-arm64/Packages.xz".into(),
             },
-            Some(ReleaseVariant::Binary(Architecture::Arm64))
+            Some(ReleaseVariant::Binary(Binary::Packages(Some("xz".into())), Architecture::Arm64))
         )
     );
 }
@@ -59,7 +59,7 @@ fn release_entry_translations() {
                 size: 63171,
                 path: "main/i18n/Translation-en".into(),
             },
-            Some(ReleaseVariant::Translation("en".to_owned()))
+            Some(ReleaseVariant::I18n(I18n::Translations("en".to_owned(), None)))
         )
     );
 
@@ -77,7 +77,7 @@ fn release_entry_translations() {
                 size: 12824,
                 path: "main/i18n/Translation-en.xz".into(),
             },
-            Some(ReleaseVariant::Translation("en".to_owned()))
+            Some(ReleaseVariant::I18n(I18n::Translations("en".to_owned(), Some("xz".into()))))
         )
     );
 }
@@ -98,7 +98,7 @@ fn release_entry_contents() {
                 size: 39115618,
                 path: "Contents-arm64.gz".into(),
             },
-            Some(ReleaseVariant::Contents(Architecture::Arm64))
+            Some(ReleaseVariant::Contents(Architecture::Arm64, Some("gz".into())))
         )
     );
 
@@ -116,7 +116,7 @@ fn release_entry_contents() {
                 size: 39115618,
                 path: "Contents-arm64".into(),
             },
-            Some(ReleaseVariant::Contents(Architecture::Arm64))
+            Some(ReleaseVariant::Contents(Architecture::Arm64, None))
         )
     );
 }
@@ -137,7 +137,7 @@ fn release_entry_components() {
                 size: 20004,
                 path: "main/dep11/Components-ppc64el.yml.xz".into(),
             },
-            Some(ReleaseVariant::Components(Architecture::Ppc64El))
+            Some(ReleaseVariant::Dep11(Dep11::Components(Architecture::Ppc64El, Some("yml.xz".into()))))
         )
     );
 }
@@ -158,7 +158,7 @@ fn release_entry_other() {
                 size: 20004,
                 path: "main/source/Sources.xz".into(),
             },
-            Some(ReleaseVariant::Source)
+            Some(ReleaseVariant::Source(Source::Sources(Some("xz".into()))))
         )
     );
 }
