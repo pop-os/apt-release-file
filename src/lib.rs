@@ -124,7 +124,7 @@ impl FromStr for DistRelease {
                     Ok(mut entry) => {
                         let mut path = String::new();
                         ::std::mem::swap(&mut path, &mut entry.path);
-                        let base = match path.rfind('.') {
+                        let base = match path.find('.') {
                             Some(pos) => &path[..pos],
                             None => &path,
                         };

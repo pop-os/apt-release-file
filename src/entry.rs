@@ -15,79 +15,7 @@ impl ReleaseEntry {
     ///
     /// Malformed / unsupported apt entries will return `None`.
     pub fn variant(&self) -> Option<EntryVariant> {
-        let mut path = self.path.as_str();
-        let mut found = false;
-        while let Some(pos) = path.find('/') {
-            found = true;
-            let base = &path[..pos];
-
-            match base {
-                _ if base.starts_with("binary-") => {
-                    let binary = &path[7..];
-
-                    return binary.find('/').and_then(|pos| {
-                        binary[..pos].parse::<Architecture>().ok().and_then(|arch| {
-                            let filename = &binary[pos + 1..];
-                            if filename.starts_with("Packages") {
-                                let ext = extension_from(filename, 8);
-                                Some(EntryVariant::Binary(BinaryEntry::Packages(ext), arch))
-                            } else if filename.starts_with("Release") {
-                                Some(EntryVariant::Binary(BinaryEntry::Release, arch))
-                            } else {
-                                None
-                            }
-                        })
-                    });
-                }
-                "debian-installer" => {
-                    return None;
-                    // TODO
-                }
-                "dep11" => {
-                    let path = &path[6..];
-                    return if path.starts_with("icons-") {
-                        type_with_extension::<ImageSize>(&path[6..])
-                            .map(|(res, ext)| EntryVariant::Dep11(Dep11Entry::Icons(res, ext)))
-                    } else if path.starts_with("Components-") {
-                        type_with_extension::<Architecture>(&path[11..]).map(|(arch, ext)| {
-                            EntryVariant::Dep11(Dep11Entry::Components(arch, ext))
-                        })
-                    } else {
-                        None
-                    };
-                }
-                "i18n" => {
-                    let path = &path[5..];
-                    return if path.starts_with("Translation") {
-                        type_with_extension::<String>(&path[12..])
-                            .map(|(loc, ext)| EntryVariant::I18n(I18nEntry::Translations(loc, ext)))
-                    } else if path == "Index" {
-                        Some(EntryVariant::I18n(I18nEntry::Index))
-                    } else {
-                        None
-                    };
-                }
-                "source" => {
-                    let path = &path[7..];
-                    return if path.starts_with("Sources") {
-                        let ext = extension_from(path, 7);
-                        Some(EntryVariant::Source(SourceEntry::Sources(ext)))
-                    } else if path == "Release" {
-                        Some(EntryVariant::Source(SourceEntry::Release))
-                    } else {
-                        None
-                    };
-                }
-                _ => path = &path[pos + 1..],
-            }
-        }
-
-        if !found && self.path.starts_with("Contents-") {
-            return type_with_extension::<Architecture>(&self.path[9..])
-                .map(|(arch, ext)| EntryVariant::Contents(arch, ext));
-        }
-
-        None
+        entry_variant(&self.path)
     }
 }
 
@@ -166,4 +94,95 @@ fn type_with_extension<T: FromStr>(input: &str) -> Option<(T, Option<String>)> {
     };
 
     kind.parse::<T>().ok().map(|kind| (kind, ext))
+}
+
+fn entry_variant(original_path: &str) -> Option<EntryVariant> {
+    let mut path = original_path;
+    let mut found = false;
+    while let Some(pos) = path.find('/') {
+        found = true;
+        let base = &path[..pos];
+
+        match base {
+            _ if base.starts_with("binary-") => {
+                let binary = &path[7..];
+
+                return binary.find('/').and_then(|pos| {
+                    binary[..pos].parse::<Architecture>().ok().and_then(|arch| {
+                        let filename = &binary[pos + 1..];
+                        if filename.starts_with("Packages") {
+                            let ext = extension_from(filename, 8);
+                            Some(EntryVariant::Binary(BinaryEntry::Packages(ext), arch))
+                        } else if filename.starts_with("Release") {
+                            Some(EntryVariant::Binary(BinaryEntry::Release, arch))
+                        } else {
+                            None
+                        }
+                    })
+                });
+            }
+            "debian-installer" => {
+                return None;
+                // TODO
+            }
+            "dep11" => {
+                let path = &path[6..];
+                return if path.starts_with("icons-") {
+                    type_with_extension::<ImageSize>(&path[6..])
+                        .map(|(res, ext)| EntryVariant::Dep11(Dep11Entry::Icons(res, ext)))
+                } else if path.starts_with("Components-") {
+                    type_with_extension::<Architecture>(&path[11..])
+                        .map(|(arch, ext)| EntryVariant::Dep11(Dep11Entry::Components(arch, ext)))
+                } else {
+                    None
+                };
+            }
+            "i18n" => {
+                let path = &path[5..];
+                return if path.starts_with("Translation") {
+                    type_with_extension::<String>(&path[12..])
+                        .map(|(loc, ext)| EntryVariant::I18n(I18nEntry::Translations(loc, ext)))
+                } else if path == "Index" {
+                    Some(EntryVariant::I18n(I18nEntry::Index))
+                } else {
+                    None
+                };
+            }
+            "source" => {
+                let path = &path[7..];
+                return if path.starts_with("Sources") {
+                    let ext = extension_from(path, 7);
+                    Some(EntryVariant::Source(SourceEntry::Sources(ext)))
+                } else if path == "Release" {
+                    Some(EntryVariant::Source(SourceEntry::Release))
+                } else {
+                    None
+                };
+            }
+            _ => path = &path[pos + 1..],
+        }
+    }
+
+    if !found && original_path.starts_with("Contents-") {
+        return type_with_extension::<Architecture>(&original_path[9..])
+            .map(|(arch, ext)| EntryVariant::Contents(arch, ext));
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entry_parsing() {
+        assert_eq!(
+            entry_variant("binary-amd64/Packages.xz").expect("bad entry result"),
+            EntryVariant::Binary(
+                BinaryEntry::Packages(Some("xz".into())),
+                Architecture::Amd64
+            )
+        )
+    }
 }
