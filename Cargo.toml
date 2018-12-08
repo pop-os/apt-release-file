@@ -1,6 +1,6 @@
 [package]
 name = "apt-release-file"
-version = "0.1.0"
+version = "0.1.1-alpha"
 authors = ["Michael Aaron Murphy <mmstickman@gmail.com>"]
 description = "Library for serializing / deserializing apt dist release files"
 license = "MIT"
