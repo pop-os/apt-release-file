@@ -5,6 +5,7 @@ authors = ["Michael Aaron Murphy <mmstickman@gmail.com>"]
 description = "Library for serializing / deserializing apt dist release files"
 license = "MIT"
 readme = "README.md"
+keywords = ["apt", "release", "linux"]
 
 [dependencies]
 cascade = "0.1.2"
