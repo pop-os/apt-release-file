@@ -82,6 +82,8 @@ impl FromStr for DistRelease {
             value.split_whitespace().map(String::from).collect()
         }
 
+        let mut sum = None;
+
         while !entries.is_empty() {
             let line = iterator.next().unwrap();
 
@@ -107,6 +109,9 @@ impl FromStr for DistRelease {
 
             if let Some(pos) = remove.take() {
                 entries.remove(pos);
+            } else if line.ends_with(':') {
+                sum = Some(line.trim()[..line.len() - 1].to_owned());
+                break
             } else {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -115,7 +120,7 @@ impl FromStr for DistRelease {
             }
         }
 
-        let mut active_hash = String::new();
+        let mut active_hash = sum.unwrap_or_default();
         let mut active_components = EntryComponents::default();
 
         for line in iterator {
