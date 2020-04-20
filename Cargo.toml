@@ -8,7 +8,7 @@ readme = "README.md"
 keywords = ["apt", "release", "linux"]
 
 [dependencies]
-cascade = "0.1.2"
-chrono = "0.4.6"
-deb-architectures = "0.1.0"
-smart-default = "0.2.0"
+cascade = "0.1"
+chrono = "0.4"
+deb-architectures = "0.1"
+smart-default = "0.6"

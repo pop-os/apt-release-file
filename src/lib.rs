@@ -23,7 +23,7 @@ pub struct DistRelease {
     pub architectures: Vec<String>,
     pub codename: String,
     pub components: Vec<String>,
-    #[default = "Utc::now()"]
+    #[default(Utc::now())]
     pub date: DateTime<Utc>,
     pub description: String,
     pub label: String,
